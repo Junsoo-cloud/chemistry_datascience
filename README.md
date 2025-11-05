@@ -21,7 +21,7 @@ Our goal is to construct an interpretable and reliable predictive model for thes
 ## ⚙️ Workflow
 
 1. **Data Collection**
-   - Dataset of organophosphorus compounds with known Log K<sub>ow</sub> values.
+   - Dataset of organophosphorus compounds with known Log K<sub>ow</sub> values. Our team used PubChem Database, which has most amount of chemical data.
    - Molecular descriptors generated using cheminformatics tools (e.g., RDKit, Mordred).
 
 2. **Exploratory Data Analysis (EDA)**
