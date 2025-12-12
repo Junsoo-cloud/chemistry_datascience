@@ -35,18 +35,19 @@ Our goal is to construct an interpretable and reliable predictive model for thes
 
 ## Project Directory
 
-'''text
 chemistry_datascience/
 ├── src/
-│   ├── data/            
-│   ├── features/        
-│   ├── models/          
-|   ├── outputs/         
-|   ├── utils/           
+│   ├── data/
+│   ├── features/
+│   ├── models/
+│   ├── outputs/
+│   ├── utils/
 │
-├── run_pipeline.py      
-├── README.md            
-└── requirements.txt     
+│
+├── README.md
+├── run_pipeline.py
+└── requirements.txt
+
 
 
 
