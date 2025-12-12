@@ -33,25 +33,6 @@ Our goal is to construct an interpretable and reliable predictive model for thes
 
 ---
 
-## Project Directory
-
-'''bash
-chemistry_datascience/
-├── src/
-│   ├── data/
-│   ├── features/
-│   ├── models/
-│   ├── outputs/
-│   ├── utils/
-│
-│
-├── README.md
-├── run_pipeline.py
-└── requirements.txt
-'''
-
-
-
 ## 👥 Team
 **Project Members:**  
 - 서울시립대학교 컴퓨터과학부 김준수
