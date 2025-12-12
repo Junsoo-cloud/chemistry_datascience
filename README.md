@@ -35,6 +35,7 @@ Our goal is to construct an interpretable and reliable predictive model for thes
 
 ## Project Directory
 
+'''text
 chemistry_datascience/
 ├── src/
 │   ├── data/            
