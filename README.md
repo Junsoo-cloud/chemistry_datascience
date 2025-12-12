@@ -35,6 +35,7 @@ Our goal is to construct an interpretable and reliable predictive model for thes
 
 ## Project Directory
 
+'''bash
 chemistry_datascience/
 ├── src/
 │   ├── data/
@@ -47,7 +48,7 @@ chemistry_datascience/
 ├── README.md
 ├── run_pipeline.py
 └── requirements.txt
-
+'''
 
 
 
