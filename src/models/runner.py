@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestRegressor
 from lightgbm import LGBMRegressor
-from sklearn.metrics import root_mean_squared_error, r2_score
+from sklearn.metrics import r2_score, root_mean_squared_error
 
 import optuna
 
@@ -13,23 +13,45 @@ from ..utils.eval import regression_metrics
 
 
 def _train_and_eval(estimator, X_train, X_test, y_train, y_test):
+    # Fit and evaluate on both train and test to produce training metrics as well
     estimator.fit(X_train, y_train)
-    y_pred = estimator.predict(X_test)
+    y_pred_test = estimator.predict(X_test)
+    y_pred_train = estimator.predict(X_train)
+
     # number of data points (n) and features (p) for adjusted R^2 and RSE
     try:
-        num_data = int(len(y_test))
+        num_data_test = int(len(y_test))
     except Exception:
-        num_data = None
+        num_data_test = None
 
     try:
         if hasattr(X_test, "shape") and len(X_test.shape) >= 2:
-            num_features = int(X_test.shape[1])
+            num_features_test = int(X_test.shape[1])
         else:
-            num_features = 1
+            num_features_test = 1
     except Exception:
-        num_features = None
+        num_features_test = None
 
-    return regression_metrics(y_test, y_pred, num_data, num_features)
+    try:
+        num_data_train = int(len(y_train))
+    except Exception:
+        num_data_train = None
+
+    try:
+        if hasattr(X_train, "shape") and len(X_train.shape) >= 2:
+            num_features_train = int(X_train.shape[1])
+        else:
+            num_features_train = 1
+    except Exception:
+        num_features_train = None
+
+    test_metrics = regression_metrics(y_test, y_pred_test, num_data_test, num_features_test)
+    train_metrics = regression_metrics(y_train, y_pred_train, num_data_train, num_features_train)
+
+    # prefix train metrics
+    prefixed_train = {f"train_{k}": v for k, v in train_metrics.items()}
+    # test metrics keep original keys (r2, rmse, ...)
+    return {**prefixed_train, **test_metrics}
 
 
 def train_and_eval(estimator, X_train, X_test, y_train, y_test):
@@ -43,6 +65,7 @@ def run_baseline(X_train, X_test, y_train, y_test):
     """
     results = []
 
+    # Baseline models: do not embed scaling here. Scaling should be controlled by the caller.
     models = {
         "LinearRegression": LinearRegression(),
         "Lasso": Lasso(alpha=0.01, max_iter=5000),
@@ -89,8 +112,9 @@ def run_optuna_tuning(X, y, X_test, y_test, model_name="RandomForest", n_trials=
                                       min_samples_split=min_samples_split, random_state=random_state)
         model.fit(X_tune_train, y_tune_train)
         y_pred = model.predict(X_val)
+        r2 = r2_score(y_val, y_pred)
         rmse = root_mean_squared_error(y_val, y_pred)
-        return float(rmse)
+        return float(r2)
         # rmse = root_mean_squared_error(y_val, y_pred)
         # return float(rmse)
 
@@ -104,8 +128,9 @@ def run_optuna_tuning(X, y, X_test, y_test, model_name="RandomForest", n_trials=
         model = LGBMRegressor(random_state=random_state, **params)
         model.fit(X_tune_train, y_tune_train)
         y_pred = model.predict(X_val)
+        r2 = r2_score(y_val, y_pred)
         rmse = root_mean_squared_error(y_val, y_pred)
-        return float(rmse)
+        return float(r2)
         # rmse = root_mean_squared_error(y_val, y_pred)
         # return float(rmse)
 
@@ -114,8 +139,8 @@ def run_optuna_tuning(X, y, X_test, y_test, model_name="RandomForest", n_trials=
         model = Lasso(alpha=alpha, max_iter=5000)
         model.fit(X_tune_train, y_tune_train)
         y_pred = model.predict(X_val)
-        rmse = root_mean_squared_error(y_val, y_pred)
-        return float(rmse)
+        r2 = r2_score(y_val, y_pred)
+        return float(r2)
         # rmse = root_mean_squared_error(y_val, y_pred)
         # return float(rmse)
 
@@ -128,7 +153,8 @@ def run_optuna_tuning(X, y, X_test, y_test, model_name="RandomForest", n_trials=
     else:
         raise ValueError("Unsupported model_name for tuning")
 
-    study = optuna.create_study(direction="minimize")
+    # objectives return R2 (higher is better)
+    study = optuna.create_study(direction="maximize")
     study.optimize(objective, n_trials=n_trials)
 
     # Train final model with best params on the entire training set
@@ -141,25 +167,14 @@ def run_optuna_tuning(X, y, X_test, y_test, model_name="RandomForest", n_trials=
     elif model_name == "LightGBM":
         final_model = LGBMRegressor(random_state=random_state, **best)
     elif model_name == "Lasso":
+        # Do not embed scaling here; caller should scale if desired
         final_model = Lasso(alpha=best.get("alpha", 1.0), max_iter=5000)
     else:
         final_model = LGBMRegressor(random_state=random_state, **best)
 
     # fit on full training data and evaluate on external test set
     final_model.fit(X_arr, y_arr)
-    y_pred_test = final_model.predict(np.asarray(X_test))
 
-    try:
-        num_data = int(len(y_test))
-    except Exception:
-        num_data = None
-    try:
-        if hasattr(X_test, "shape") and len(np.asarray(X_test).shape) >= 2:
-            num_features = int(np.asarray(X_test).shape[1])
-        else:
-            num_features = 1
-    except Exception:
-        num_features = None
-
-    metrics = regression_metrics(y_test, y_pred_test, num_data, num_features)
+    # compute train + test metrics
+    metrics = _train_and_eval(final_model, X_arr, X_test, y_arr, y_test)
     return {"model": model_name, "best_params": study.best_params, **metrics}
