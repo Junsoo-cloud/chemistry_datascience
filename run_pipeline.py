@@ -167,4 +167,4 @@ def run_all(train_path="./src/data/train_new.csv", test_path="./src/data/test_ne
 
 if __name__ == "__main__":
     # quick smoke run if executed directly
-    run_all()
+    run_all(smoke=True)
